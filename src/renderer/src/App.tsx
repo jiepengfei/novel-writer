@@ -1,35 +1,57 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+import { useState, useEffect, useCallback } from 'react'
+import { WelcomeScreen } from './components/WelcomeScreen/WelcomeScreen'
+import { MainLayout } from './components/Layout/MainLayout'
+import { useAppStore } from './store/useAppStore'
+import './assets/main.css'
 
-function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
+export default function App() {
+  const [loading, setLoading] = useState(true)
+  const { projectPath, setProjectPath, setFileTree } = useAppStore()
 
-  return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
+  const loadConfig = useCallback(async () => {
+    if (!window.appAPI) return
+    const c = await window.appAPI.getConfig()
+    setProjectPath(c.lastOpenedProject)
+    if (c.lastOpenedProject) {
+      const manifest = await window.projectAPI?.load()
+      if (manifest) setFileTree(manifest)
+    }
+  }, [setProjectPath, setFileTree])
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      if (!window.appAPI) {
+        if (!cancelled) setLoading(false)
+        return
+      }
+      const c = await window.appAPI.getConfig()
+      if (!cancelled) {
+        setProjectPath(c.lastOpenedProject)
+        if (c.lastOpenedProject && window.projectAPI) {
+          const manifest = await window.projectAPI.load()
+          if (manifest) setFileTree(manifest)
+        }
+        setLoading(false)
+      }
+    }
+    run().catch(() => {
+      if (!cancelled) setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [setProjectPath, setFileTree])
+
+  if (loading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-100 text-gray-500">
+        Loading…
       </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-    </>
-  )
+    )
+  }
+
+  if (!projectPath) {
+    return <WelcomeScreen onFolderSelected={loadConfig} />
+  }
+
+  return <MainLayout />
 }
-
-export default App

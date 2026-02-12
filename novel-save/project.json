@@ -1,0 +1,63 @@
+{
+  "title": "Untitled Project",
+  "files": {
+    "outlines": [
+      {
+        "id": "e6e6f0c8-fa34-440c-a48c-307f0e602e6e",
+        "filename": "e6e6f0c8-fa34-440c-a48c-307f0e602e6e.md",
+        "title": "新大纲222",
+        "children": [
+          {
+            "id": "a237018f-9c54-4f92-a7d2-acfa3b87dcd1",
+            "filename": "a237018f-9c54-4f92-a7d2-acfa3b87dcd1.md",
+            "title": "新大纲333"
+          },
+          {
+            "id": "22ec1606-00c2-4735-ac7f-9b760e1d628c",
+            "filename": "22ec1606-00c2-4735-ac7f-9b760e1d628c.md",
+            "title": "新大纲"
+          }
+        ]
+      },
+      {
+        "id": "6f9a7af2-2d36-4fdc-b6fa-78dfb1d12490",
+        "filename": "6f9a7af2-2d36-4fdc-b6fa-78dfb1d12490.md",
+        "title": "新大纲"
+      }
+    ],
+    "content": [
+      {
+        "id": "0e8d061f-70ec-4184-a463-8fcbb4d56046",
+        "filename": "0e8d061f-70ec-4184-a463-8fcbb4d56046.md",
+        "title": "新章节"
+      },
+      {
+        "id": "515b25ea-7f93-4343-a387-50a38f9e6950",
+        "filename": "515b25ea-7f93-4343-a387-50a38f9e6950.md",
+        "title": "新章节"
+      },
+      {
+        "id": "377ae792-8b48-42b7-a0f5-68f0cf2c3678",
+        "filename": "377ae792-8b48-42b7-a0f5-68f0cf2c3678.md",
+        "title": "新章节"
+      }
+    ],
+    "settings": [
+      {
+        "id": "c541cb89-b717-4edd-8f75-cbd0e95965cb",
+        "filename": "c541cb89-b717-4edd-8f75-cbd0e95965cb.md",
+        "title": "新设定"
+      },
+      {
+        "id": "4afc4406-1fce-47a1-8ab7-27701e9b4ca8",
+        "filename": "4afc4406-1fce-47a1-8ab7-27701e9b4ca8.md",
+        "title": "新设定"
+      },
+      {
+        "id": "4ee83125-fe21-4ab1-8a84-b09d811f7707",
+        "filename": "4ee83125-fe21-4ab1-8a84-b09d811f7707.md",
+        "title": "新设定"
+      }
+    ]
+  }
+}

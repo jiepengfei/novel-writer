@@ -1,13 +1,32 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import {
+  initProject,
+  loadProject,
+  createFile as pmCreateFile,
+  deleteFile as pmDeleteFile,
+  renameFile as pmRenameFile,
+  readFileContent,
+  saveFileContent
+} from './projectManager'
+import type { ProjectManifest } from '../shared/types'
+
+interface ConfigSchema {
+  lastOpenedProject: string | null
+}
+
+let store: { get: (k: keyof ConfigSchema) => unknown; set: (k: keyof ConfigSchema, v: unknown) => void }
+
+function getProjectPath(): string | null {
+  return store?.get('lastOpenedProject') as string | null
+}
 
 function createWindow(): void {
-  // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1200,
+    height: 700,
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
@@ -17,17 +36,12 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-  })
-
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+  mainWindow.on('ready-to-show', () => mainWindow.show())
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
     return { action: 'deny' }
   })
 
-  // HMR for renderer base on electron-vite cli.
-  // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -35,40 +49,87 @@ function createWindow(): void {
   }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
-
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+app.whenReady().then(async () => {
+  const storePkg = 'electron-store'
+  const StoreModule = await import(/* @vite-ignore */ storePkg)
+  type StoreInstance = { get: (k: keyof ConfigSchema) => unknown; set: (k: keyof ConfigSchema, v: unknown) => void }
+  const StoreClass = (StoreModule.default ?? StoreModule) as new (opts: { name: string; defaults: ConfigSchema }) => StoreInstance
+  store = new StoreClass({
+    name: 'config',
+    defaults: { lastOpenedProject: null }
   })
 
-  // IPC test
+  electronApp.setAppUserModelId('com.electron')
+  app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
+
   ipcMain.on('ping', () => console.log('pong'))
 
-  createWindow()
+  ipcMain.handle('app:get-config', () => ({
+    lastOpenedProject: store.get('lastOpenedProject')
+  }))
+  ipcMain.handle('dialog:open-folder', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const opts = { properties: ['openDirectory' as const], title: '选择项目文件夹' }
+    const { canceled, filePaths } = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+    if (canceled || filePaths.length === 0) return null
+    return filePaths[0]
+  })
+  ipcMain.handle('app:set-project-path', async (_, path: string) => {
+    store.set('lastOpenedProject', path)
+    await initProject(path)
+    return true
+  })
 
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
+  ipcMain.handle('project:init', async (_, path?: string) => {
+    const p = path ?? getProjectPath()
+    if (!p) return null
+    return initProject(p) as Promise<ProjectManifest>
+  })
+  ipcMain.handle('project:load', async () => {
+    const p = getProjectPath()
+    if (!p) return null
+    return loadProject(p) as Promise<ProjectManifest>
+  })
+  ipcMain.handle(
+    'file:create',
+    async (
+      _,
+      category: 'outlines' | 'content' | 'settings',
+      title: string,
+      parentId?: string
+    ) => {
+      const p = getProjectPath()
+      if (!p) return null
+      return pmCreateFile(p, category, title, parentId)
+    }
+  )
+  ipcMain.handle('file:delete', async (_, category: 'outlines' | 'content' | 'settings', id: string) => {
+    const p = getProjectPath()
+    if (!p) return false
+    return pmDeleteFile(p, category, id)
+  })
+  ipcMain.handle('file:rename', async (_, category: 'outlines' | 'content' | 'settings', id: string, newTitle: string) => {
+    const p = getProjectPath()
+    if (!p) return false
+    return pmRenameFile(p, category, id, newTitle)
+  })
+  ipcMain.handle('file:read', async (_, category: string, id: string) => {
+    const p = getProjectPath()
+    if (!p) return ''
+    return readFileContent(p, category, id)
+  })
+  ipcMain.handle('file:save', async (_, category: string, id: string, content: string) => {
+    const p = getProjectPath()
+    if (!p) return false
+    return saveFileContent(p, category, id, content)
+  })
+
+  createWindow()
+  app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  if (process.platform !== 'darwin') app.quit()
 })
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
