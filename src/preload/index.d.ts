@@ -12,6 +12,16 @@ declare global {
       init: (path?: string) => Promise<ProjectManifest | null>
       load: () => Promise<ProjectManifest | null>
     }
+    settingsAPI: {
+      get: () => Promise<{ geminiApiKey: string | null }>
+      save: (key: string, value: unknown) => Promise<boolean>
+    }
+    aiAPI: {
+      startChat: (message: string) => void
+      onChunk: (cb: (text: string) => void) => () => void
+      onDone: (cb: () => void) => () => void
+      onError: (cb: (msg: string) => void) => () => void
+    }
     fileAPI: {
       create: (
         category: 'outlines' | 'content' | 'settings',

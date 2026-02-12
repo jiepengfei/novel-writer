@@ -12,6 +12,29 @@ const projectAPI = {
   load: () => ipcRenderer.invoke('project:load')
 }
 
+const settingsAPI = {
+  get: () => ipcRenderer.invoke('settings:get'),
+  save: (key: string, value: unknown) => ipcRenderer.invoke('settings:save', key, value)
+}
+
+const aiAPI = {
+  startChat: (message: string) => ipcRenderer.send('ai:chat-start', { message }),
+  onChunk: (cb: (text: string) => void) => {
+    const handler = (_: unknown, text: string) => cb(text)
+    ipcRenderer.on('ai:chat-chunk', handler)
+    return () => ipcRenderer.removeListener('ai:chat-chunk', handler)
+  },
+  onDone: (cb: () => void) => {
+    ipcRenderer.on('ai:chat-done', cb)
+    return () => ipcRenderer.removeListener('ai:chat-done', cb)
+  },
+  onError: (cb: (msg: string) => void) => {
+    const handler = (_: unknown, msg: string) => cb(msg)
+    ipcRenderer.on('ai:error', handler)
+    return () => ipcRenderer.removeListener('ai:error', handler)
+  }
+}
+
 const fileAPI = {
   create: (
     category: 'outlines' | 'content' | 'settings',
@@ -33,6 +56,8 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('appAPI', appAPI)
     contextBridge.exposeInMainWorld('projectAPI', projectAPI)
+    contextBridge.exposeInMainWorld('settingsAPI', settingsAPI)
+    contextBridge.exposeInMainWorld('aiAPI', aiAPI)
     contextBridge.exposeInMainWorld('fileAPI', fileAPI)
   } catch (e) {
     console.error(e)
@@ -41,5 +66,7 @@ if (process.contextIsolated) {
   ;(window as unknown as { electron: typeof electronAPI }).electron = electronAPI
   ;(window as unknown as { appAPI: typeof appAPI }).appAPI = appAPI
   ;(window as unknown as { projectAPI: typeof projectAPI }).projectAPI = projectAPI
+  ;(window as unknown as { settingsAPI: typeof settingsAPI }).settingsAPI = settingsAPI
+  ;(window as unknown as { aiAPI: typeof aiAPI }).aiAPI = aiAPI
   ;(window as unknown as { fileAPI: typeof fileAPI }).fileAPI = fileAPI
 }
