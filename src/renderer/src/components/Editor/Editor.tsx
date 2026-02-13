@@ -8,7 +8,7 @@ import { AIHighlight } from '../../extensions/AIHighlight'
 const DEBOUNCE_MS = 1000
 
 export function Editor(): React.ReactElement {
-  const { activeFile, setChatDraft } = useAppStore()
+  const { activeFile, addChatContextTag } = useAppStore()
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isExpanding, setIsExpanding] = useState(false)
   const [expandError, setExpandError] = useState<string | null>(null)
@@ -254,11 +254,7 @@ export function Editor(): React.ReactElement {
           .trim()
       : capturedSelection?.text
     if (!selectedText) return
-    const formatted = selectedText
-      .split('\n')
-      .map((line) => '> ' + line)
-      .join('\n') + '\n\n'
-    setChatDraft(formatted)
+    addChatContextTag(selectedText)
   }
 
   const hasAIHighlight = editor?.isActive('aiHighlight') ?? false
