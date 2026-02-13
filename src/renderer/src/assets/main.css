@@ -25,3 +25,8 @@ body {
   color: #059669;
   background: #d1fae5;
 }
+
+/* 聊天与审阅等区域内的文字可选中复制 */
+.selectable-text {
+  user-select: text;
+}

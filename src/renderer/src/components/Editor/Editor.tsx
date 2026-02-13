@@ -288,7 +288,7 @@ export function Editor(): React.ReactElement {
           <div className="px-3 py-2 border-b border-gray-200 text-xs font-medium text-gray-500 bg-gray-50">
             审阅
           </div>
-          <div className="p-3 flex-1 overflow-y-auto space-y-2">
+          <div className="p-3 flex-1 overflow-y-auto space-y-2 selectable-text">
             <div>
               <div className="text-xs text-gray-500 mb-1">原文（选中）</div>
               <div className="px-2 py-2 rounded text-sm bg-red-50 text-red-900 border border-red-200 whitespace-pre-wrap break-words">

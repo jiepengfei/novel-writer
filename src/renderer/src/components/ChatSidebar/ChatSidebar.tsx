@@ -101,7 +101,7 @@ export function ChatSidebar(): React.ReactElement {
   return (
     <div className="flex flex-col h-full">
       <div className="p-2 border-b border-gray-200 font-medium text-gray-700 shrink-0">AI 助手</div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0 selectable-text">
         {messages.length === 0 && !error && (
           <p className="text-gray-400 text-sm">输入消息与 Gemini 对话，回复将流式显示。</p>
         )}
