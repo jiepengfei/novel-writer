@@ -14,7 +14,7 @@ import {
   saveFileContent
 } from './projectManager'
 import type { ProjectManifest } from '../shared/types'
-import { streamChat } from './aiService'
+import { streamChat, streamExpand } from './aiService'
 
 interface ConfigSchema {
   lastOpenedProject: string | null
@@ -173,6 +173,26 @@ app.whenReady().then(async () => {
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err)
       event.sender.send('ai:error', raw)
+    }
+  })
+
+  ipcMain.on('ai:expand-start', async (event, payload: { text: string }) => {
+    const apiKey = store.get('geminiApiKey') as string | null
+    if (!apiKey?.trim()) {
+      event.sender.send('ai:expand-error', '请先在设置中配置 API Key')
+      return
+    }
+    const text = typeof payload?.text === 'string' ? payload.text.trim() : ''
+    if (!text) {
+      event.sender.send('ai:expand-error', '请先选中要扩展的文本')
+      return
+    }
+    const model = ((store.get('geminiModel') as string) || 'gemini-2.0-flash').trim()
+    try {
+      await streamExpand(text, apiKey, model, event.sender)
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err)
+      event.sender.send('ai:expand-error', raw)
     }
   })
 

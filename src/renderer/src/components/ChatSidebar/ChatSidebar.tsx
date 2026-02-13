@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useAppStore } from '../../store/useAppStore'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -6,11 +7,14 @@ interface ChatMessage {
 }
 
 export function ChatSidebar(): React.ReactElement {
+  const { chatDraft, setChatDraft } = useAppStore()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const listEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const justAppliedDraftRef = useRef(false)
 
   useEffect(() => {
     if (!window.aiAPI) return
@@ -39,6 +43,24 @@ export function ChatSidebar(): React.ReactElement {
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    if (!chatDraft) return
+    setInput(chatDraft)
+    setChatDraft('')
+    justAppliedDraftRef.current = true
+  }, [chatDraft, setChatDraft])
+
+  useEffect(() => {
+    if (!justAppliedDraftRef.current) return
+    justAppliedDraftRef.current = false
+    const ta = textareaRef.current
+    if (ta) {
+      ta.focus()
+      const len = ta.value.length
+      ta.setSelectionRange(len, len)
+    }
+  }, [input])
 
   const handleSend = (): void => {
     const text = input.trim()
@@ -77,6 +99,7 @@ export function ChatSidebar(): React.ReactElement {
       <div className="p-2 border-t border-gray-200">
         <div className="flex gap-2">
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

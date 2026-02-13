@@ -25,6 +25,10 @@ declare global {
       onChunk: (cb: (text: string) => void) => () => void
       onDone: (cb: () => void) => () => void
       onError: (cb: (msg: string) => void) => () => void
+      expandStart: (text: string) => void
+      onExpandChunk: (cb: (text: string) => void) => () => void
+      onExpandDone: (cb: () => void) => () => void
+      onExpandError: (cb: (msg: string) => void) => () => void
     }
     fileAPI: {
       create: (

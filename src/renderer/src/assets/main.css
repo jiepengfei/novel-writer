@@ -11,10 +11,17 @@ body {
   height: 100vh;
 }
 
-/* Tiptap editor base */
+/* Tiptap editor base（允许选中文字，否则 BubbleMenu 的 Expand/Chat 无法使用） */
 .ProseMirror {
   outline: none;
+  user-select: text;
 }
 .ProseMirror p {
   margin-bottom: 0.5em;
+}
+
+/* AI 生成内容标记（Review Mode，绿色） */
+.ProseMirror .ai-generated {
+  color: #059669;
+  background: #d1fae5;
 }

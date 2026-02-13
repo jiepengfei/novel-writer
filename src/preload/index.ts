@@ -32,6 +32,21 @@ const aiAPI = {
     const handler = (_: unknown, msg: string) => cb(msg)
     ipcRenderer.on('ai:error', handler)
     return () => ipcRenderer.removeListener('ai:error', handler)
+  },
+  expandStart: (text: string) => ipcRenderer.send('ai:expand-start', { text }),
+  onExpandChunk: (cb: (text: string) => void) => {
+    const handler = (_: unknown, text: string) => cb(text)
+    ipcRenderer.on('ai:expand-chunk', handler)
+    return () => ipcRenderer.removeListener('ai:expand-chunk', handler)
+  },
+  onExpandDone: (cb: () => void) => {
+    ipcRenderer.on('ai:expand-done', cb)
+    return () => ipcRenderer.removeListener('ai:expand-done', cb)
+  },
+  onExpandError: (cb: (msg: string) => void) => {
+    const handler = (_: unknown, msg: string) => cb(msg)
+    ipcRenderer.on('ai:expand-error', handler)
+    return () => ipcRenderer.removeListener('ai:expand-error', handler)
   }
 }
 
