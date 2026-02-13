@@ -61,7 +61,22 @@ export function MainLayout(): React.ReactElement | null {
         className="border-r border-gray-200 bg-gray-50 flex flex-col flex-shrink-0 min-h-0"
         style={{ width: leftWidth, minWidth: LEFT_MIN }}
       >
-        <div className="p-2 border-b border-gray-200 font-medium text-gray-700">文件</div>
+        <div className="p-2 border-b border-gray-200 font-medium text-gray-700 flex items-center justify-between gap-2">
+          <span>文件</span>
+          <button
+            type="button"
+            onClick={async () => {
+              const path = window.appAPI?.showSaveDialog && (await window.appAPI.showSaveDialog())
+              if (path && window.projectAPI?.export) {
+                await window.projectAPI.export('content', path)
+              }
+            }}
+            className="text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-2 py-1 rounded"
+            title="导出正文合并为 .txt"
+          >
+            导出
+          </button>
+        </div>
         <div className="flex-1 overflow-y-auto p-2">
           <FileTreeSidebar />
         </div>

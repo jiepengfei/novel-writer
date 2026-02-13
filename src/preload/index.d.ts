@@ -7,10 +7,15 @@ declare global {
       getConfig: () => Promise<{ lastOpenedProject: string | null }>
       setProjectPath: (path: string) => Promise<boolean>
       openFolder: () => Promise<string | null>
+      showSaveDialog: () => Promise<string | null>
     }
     projectAPI: {
       init: (path?: string) => Promise<ProjectManifest | null>
       load: () => Promise<ProjectManifest | null>
+      export: (
+        category: 'outlines' | 'content' | 'settings',
+        path: string
+      ) => Promise<void>
     }
     settingsAPI: {
       get: () => Promise<{

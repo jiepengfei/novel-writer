@@ -4,12 +4,17 @@ import { electronAPI } from '@electron-toolkit/preload'
 const appAPI = {
   getConfig: () => ipcRenderer.invoke('app:get-config'),
   setProjectPath: (path: string) => ipcRenderer.invoke('app:set-project-path', path),
-  openFolder: () => ipcRenderer.invoke('dialog:open-folder')
+  openFolder: () => ipcRenderer.invoke('dialog:open-folder'),
+  showSaveDialog: () => ipcRenderer.invoke('dialog:show-save') as Promise<string | null>
 }
 
 const projectAPI = {
   init: (path?: string) => ipcRenderer.invoke('project:init', path),
-  load: () => ipcRenderer.invoke('project:load')
+  load: () => ipcRenderer.invoke('project:load'),
+  export: (
+    category: 'outlines' | 'content' | 'settings',
+    path: string
+  ) => ipcRenderer.invoke('project:export', { category, path })
 }
 
 const settingsAPI = {

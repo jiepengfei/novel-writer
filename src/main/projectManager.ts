@@ -249,6 +249,36 @@ export async function reorderFiles(
 }
 
 /**
+ * 按 project.json 中顺序将某分类下所有文件合并为单个文本并写入 targetPath。
+ * 格式：### [标题]\n\n[内容]\n\n---\n\n（逐章拼接）。
+ */
+export async function exportProject(
+  projectPath: string,
+  category: 'outlines' | 'content' | 'settings',
+  targetPath: string
+): Promise<void> {
+  const manifest = await loadProject(projectPath)
+  const roots = (manifest.files[category] ?? []) as FileNode[]
+  const ordered = flattenFileNodes(roots)
+  const dir = join(projectPath, getDir(category))
+  const parts: string[] = []
+  for (const node of ordered) {
+    if (!node.filename) continue
+    const title = node.title?.trim() || node.filename
+    parts.push(`### ${title}\n\n`)
+    try {
+      const content = await readFile(join(dir, node.filename), 'utf-8')
+      parts.push(content.trimEnd())
+    } catch {
+      parts.push('')
+    }
+    parts.push('\n\n---\n\n')
+  }
+  const out = parts.join('').replace(/\n\n---\n\n$/, '\n')
+  await writeFile(targetPath, out, 'utf-8')
+}
+
+/**
  * 仅对设定项有效：切换某文件的「参与 AI 上下文」状态，并写回 project.json。
  */
 export async function setFileActive(

@@ -14,7 +14,8 @@ import {
   saveFileContent,
   setFileActive as pmSetFileActive,
   getStoryContext,
-  reorderFiles as pmReorderFiles
+  reorderFiles as pmReorderFiles,
+  exportProject as pmExportProject
 } from './projectManager'
 import type { ProjectManifest } from '../shared/types'
 import { streamChat, streamExpand } from './aiService'
@@ -99,6 +100,18 @@ app.whenReady().then(async () => {
     if (canceled || filePaths.length === 0) return null
     return filePaths[0]
   })
+  ipcMain.handle('dialog:show-save', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const opts = {
+      title: '导出合并文件',
+      defaultPath: 'novel.txt',
+      filters: [{ name: '文本文件', extensions: ['txt'] }]
+    }
+    const { canceled, filePath } = win
+      ? await dialog.showSaveDialog(win, opts)
+      : await dialog.showSaveDialog(opts)
+    return canceled ? null : filePath
+  })
   ipcMain.handle('app:set-project-path', async (_, path: string) => {
     store.set('lastOpenedProject', path)
     await initProject(path)
@@ -166,6 +179,17 @@ app.whenReady().then(async () => {
       const p = getProjectPath()
       if (!p || !payload?.category || !Array.isArray(payload.newOrderIds)) return false
       return pmReorderFiles(p, payload.category, payload.parentId ?? null, payload.newOrderIds)
+    }
+  )
+  ipcMain.handle(
+    'project:export',
+    async (
+      _,
+      payload: { category: 'outlines' | 'content' | 'settings'; path: string }
+    ) => {
+      const p = getProjectPath()
+      if (!p || !payload?.path || !payload?.category) return
+      await pmExportProject(p, payload.category, payload.path)
     }
   )
 
