@@ -40,6 +40,11 @@ declare global {
       rename: (category: 'outlines' | 'content' | 'settings', id: string, newTitle: string) => Promise<boolean>
       read: (category: string, id: string) => Promise<string>
       save: (category: string, id: string, content: string) => Promise<boolean>
+      setActive: (
+        category: 'outlines' | 'content' | 'settings',
+        id: string,
+        isActive: boolean
+      ) => Promise<boolean>
     }
   }
 }

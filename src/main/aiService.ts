@@ -3,16 +3,20 @@ import type { WebContents } from 'electron'
 
 /**
  * Stream chat completion from Gemini and send chunks to the renderer.
- * @param model - 模型名，如 gemini-2.5-flash，由设置传入
+ * @param systemContext - 可选，注入到 systemInstruction（如 Story Bible，仅 Active 设定）
  */
 export async function streamChat(
   message: string,
   apiKey: string,
   model: string,
-  webContents: WebContents
+  webContents: WebContents,
+  systemContext?: string
 ): Promise<void> {
   const genAI = new GoogleGenerativeAI(apiKey)
-  const generativeModel = genAI.getGenerativeModel({ model: model || 'gemini-2.5-flash' })
+  const generativeModel = genAI.getGenerativeModel({
+    model: model || 'gemini-2.5-flash',
+    ...(systemContext?.trim() ? { systemInstruction: systemContext.trim() } : {})
+  })
   const result = await generativeModel.generateContentStream(message)
   for await (const chunk of result.stream) {
     try {
@@ -30,15 +34,20 @@ const EXPAND_PROMPT = (text: string) =>
 
 /**
  * Stream "expand text" from Gemini for the Review Mode workflow.
+ * @param systemContext - 可选，注入到 systemInstruction（如 Story Bible）
  */
 export async function streamExpand(
   text: string,
   apiKey: string,
   model: string,
-  webContents: WebContents
+  webContents: WebContents,
+  systemContext?: string
 ): Promise<void> {
   const genAI = new GoogleGenerativeAI(apiKey)
-  const generativeModel = genAI.getGenerativeModel({ model: model || 'gemini-2.0-flash' })
+  const generativeModel = genAI.getGenerativeModel({
+    model: model || 'gemini-2.0-flash',
+    ...(systemContext?.trim() ? { systemInstruction: systemContext.trim() } : {})
+  })
   const result = await generativeModel.generateContentStream(EXPAND_PROMPT(text))
   for await (const chunk of result.stream) {
     try {

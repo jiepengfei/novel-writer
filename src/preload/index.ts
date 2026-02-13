@@ -63,7 +63,12 @@ const fileAPI = {
   },
   read: (category: string, id: string) => ipcRenderer.invoke('file:read', category, id),
   save: (category: string, id: string, content: string) =>
-    ipcRenderer.invoke('file:save', category, id, content)
+    ipcRenderer.invoke('file:save', category, id, content),
+  setActive: (
+    category: 'outlines' | 'content' | 'settings',
+    id: string,
+    isActive: boolean
+  ) => ipcRenderer.invoke('file:set-active', category, id, isActive)
 }
 
 if (process.contextIsolated) {

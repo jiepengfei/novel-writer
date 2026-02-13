@@ -41,6 +41,16 @@ function getDir(category: string): string {
   return CONTENT_DIR
 }
 
+/** 将树形文件列表扁平化为数组（深度优先） */
+function flattenFileNodes(nodes: FileNode[]): FileNode[] {
+  const out: FileNode[] = []
+  for (const n of nodes) {
+    out.push(n)
+    if (n.children?.length) out.push(...flattenFileNodes(n.children))
+  }
+  return out
+}
+
 function findInTree(nodes: FileNode[], id: string): FileNode | null {
   for (const n of nodes) {
     if (n.id === id) return n
@@ -194,4 +204,55 @@ export async function saveFileContent(
   const filePath = join(projectPath, getDir(category), node.filename)
   await writeFile(filePath, content, 'utf-8')
   return true
+}
+
+/**
+ * 仅对设定项有效：切换某文件的「参与 AI 上下文」状态，并写回 project.json。
+ */
+export async function setFileActive(
+  projectPath: string,
+  id: string,
+  isActive: boolean
+): Promise<boolean> {
+  const manifest = await loadProject(projectPath)
+  const roots = (manifest.files.settings ?? []) as FileNode[]
+  const node = findInTree(roots, id)
+  if (!node) return false
+  node.isActive = isActive
+  await writeFile(
+    join(projectPath, PROJECT_JSON),
+    JSON.stringify(manifest, null, 2),
+    'utf-8'
+  )
+  return true
+}
+
+const STORY_BIBLE_HEADER = '--- STORY BIBLE ---'
+const STORY_BIBLE_FOOTER = '-------------------'
+
+/**
+ * 读取项目 settings 中仅 isActive === true 的 .md 文件，拼接为 Story Bible 字符串，用于注入 AI 系统指令。
+ */
+export async function getStoryContext(projectPath: string): Promise<string> {
+  const manifest = await loadProject(projectPath)
+  const allSettings = flattenFileNodes(manifest.files.settings ?? [])
+  const active = allSettings.filter((n) => n.filename?.endsWith('.md') && n.isActive === true)
+  if (active.length === 0) return ''
+
+  const parts: string[] = [STORY_BIBLE_HEADER]
+  const dir = join(projectPath, SETTINGS_DIR)
+
+  for (const node of active) {
+    const label = node.title.trim().endsWith('.md') ? node.title.trim() : `${node.title.trim()}.md`
+    parts.push(`[File: ${label}]`)
+    try {
+      const content = await readFile(join(dir, node.filename), 'utf-8')
+      parts.push(content.trim() ? content.trim() : '(empty)')
+    } catch {
+      parts.push('(read error)')
+    }
+  }
+
+  parts.push(STORY_BIBLE_FOOTER)
+  return parts.join('\n\n')
 }

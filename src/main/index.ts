@@ -11,7 +11,9 @@ import {
   deleteFile as pmDeleteFile,
   renameFile as pmRenameFile,
   readFileContent,
-  saveFileContent
+  saveFileContent,
+  setFileActive as pmSetFileActive,
+  getStoryContext
 } from './projectManager'
 import type { ProjectManifest } from '../shared/types'
 import { streamChat, streamExpand } from './aiService'
@@ -145,6 +147,15 @@ app.whenReady().then(async () => {
     if (!p) return false
     return saveFileContent(p, category, id, content)
   })
+  ipcMain.handle(
+    'file:set-active',
+    async (_, category: 'outlines' | 'content' | 'settings', id: string, isActive: boolean) => {
+      if (category !== 'settings') return false
+      const p = getProjectPath()
+      if (!p) return false
+      return pmSetFileActive(p, id, isActive)
+    }
+  )
 
   ipcMain.handle('settings:get', () => ({
     geminiApiKey: store.get('geminiApiKey') as string | null,
@@ -168,8 +179,10 @@ app.whenReady().then(async () => {
       return
     }
     const model = ((store.get('geminiModel') as string) || 'gemini-2.5-flash').trim()
+    const projectPath = getProjectPath()
+    const systemContext = projectPath ? await getStoryContext(projectPath) : ''
     try {
-      await streamChat(message, apiKey, model, event.sender)
+      await streamChat(message, apiKey, model, event.sender, systemContext || undefined)
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err)
       event.sender.send('ai:error', raw)
@@ -188,8 +201,10 @@ app.whenReady().then(async () => {
       return
     }
     const model = ((store.get('geminiModel') as string) || 'gemini-2.0-flash').trim()
+    const projectPath = getProjectPath()
+    const systemContext = projectPath ? await getStoryContext(projectPath) : ''
     try {
-      await streamExpand(text, apiKey, model, event.sender)
+      await streamExpand(text, apiKey, model, event.sender, systemContext || undefined)
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err)
       event.sender.send('ai:expand-error', raw)

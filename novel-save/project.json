@@ -46,17 +46,20 @@
       {
         "id": "c541cb89-b717-4edd-8f75-cbd0e95965cb",
         "filename": "c541cb89-b717-4edd-8f75-cbd0e95965cb.md",
-        "title": "新设定"
+        "title": "新设定",
+        "isActive": false
       },
       {
         "id": "4afc4406-1fce-47a1-8ab7-27701e9b4ca8",
         "filename": "4afc4406-1fce-47a1-8ab7-27701e9b4ca8.md",
-        "title": "新设定"
+        "title": "新设定",
+        "isActive": false
       },
       {
         "id": "4ee83125-fe21-4ab1-8a84-b09d811f7707",
         "filename": "4ee83125-fe21-4ab1-8a84-b09d811f7707.md",
-        "title": "新设定"
+        "title": "新设定",
+        "isActive": false
       }
     ]
   }

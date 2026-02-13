@@ -61,7 +61,8 @@ function Section({
   onAddChild,
   onDelete,
   onStartRename,
-  onFinishRename
+  onFinishRename,
+  onToggleActive
 }: {
   label: string
   category: FileCategory
@@ -76,6 +77,7 @@ function Section({
   onDelete: (id: string, category: FileCategory) => void
   onStartRename: (category: FileCategory, id: string) => void
   onFinishRename: (category: FileCategory, id: string, newTitle: string) => void
+  onToggleActive?: (id: string, isActive: boolean) => void
 }): React.ReactElement {
   const [collapsed, setCollapsed] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
@@ -145,6 +147,7 @@ function Section({
               onRenameClick={handleRenameClick}
               onDeleteClick={handleDelete}
               onAddChildClick={handleAddChildClick}
+              onToggleActive={onToggleActive}
             />
           ))}
         </ul>
@@ -171,7 +174,8 @@ function TreeNode({
   onCloseContextMenu,
   onRenameClick,
   onDeleteClick,
-  onAddChildClick
+  onAddChildClick,
+  onToggleActive
 }: {
   node: FileNode
   category: FileCategory
@@ -191,9 +195,11 @@ function TreeNode({
   onRenameClick: () => void
   onDeleteClick: () => void
   onAddChildClick: () => void
+  onToggleActive?: (id: string, isActive: boolean) => void
 }): React.ReactElement {
   const hasChildren = !!node.children?.length
   const expanded = expandedIds.has(node.id)
+  const showActiveToggle = category === 'settings' && typeof onToggleActive === 'function'
 
   return (
     <li className="relative">
@@ -212,6 +218,19 @@ function TreeNode({
           </button>
         ) : (
           <span className="w-4 shrink-0 inline-block" />
+        )}
+        {showActiveToggle && (
+          <input
+            type="checkbox"
+            checked={node.isActive === true}
+            onChange={(e) => {
+              e.stopPropagation()
+              onToggleActive(node.id, !(node.isActive === true))
+            }}
+            onClick={(e) => e.stopPropagation()}
+            title="参与 AI 上下文"
+            className="mr-1.5 shrink-0 rounded border-gray-300"
+          />
         )}
         {editingId === node.id ? (
           <RenameInput
@@ -305,6 +324,7 @@ function TreeNode({
               onRenameClick={onRenameClick}
               onDeleteClick={onDeleteClick}
               onAddChildClick={onAddChildClick}
+              onToggleActive={onToggleActive}
             />
           ))}
         </ul>
@@ -428,6 +448,16 @@ export function FileTreeSidebar(): React.ReactElement | null {
     }
   }
 
+  const handleToggleActive = async (id: string, isActive: boolean): Promise<void> => {
+    if (!window.fileAPI?.setActive || !fileTree) return
+    const ok = await window.fileAPI.setActive('settings', id, isActive)
+    if (ok) {
+      const next = { ...fileTree, files: { ...fileTree.files } }
+      next.files.settings = updateInTree(next.files.settings ?? [], id, { isActive })
+      setFileTree(next)
+    }
+  }
+
   if (!fileTree) return null
 
   return (
@@ -448,6 +478,7 @@ export function FileTreeSidebar(): React.ReactElement | null {
           onDelete={handleDelete}
           onStartRename={(cat, id) => setEditingNode({ category: cat, id })}
           onFinishRename={handleFinishRename}
+          onToggleActive={key === 'settings' ? handleToggleActive : undefined}
         />
       ))}
     </div>
