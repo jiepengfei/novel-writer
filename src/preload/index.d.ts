@@ -13,7 +13,11 @@ declare global {
       load: () => Promise<ProjectManifest | null>
     }
     settingsAPI: {
-      get: () => Promise<{ geminiApiKey: string | null }>
+      get: () => Promise<{
+        geminiApiKey: string | null
+        proxyUrl: string
+        geminiModel: string
+      }>
       save: (key: string, value: unknown) => Promise<boolean>
     }
     aiAPI: {

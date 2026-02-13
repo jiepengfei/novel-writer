@@ -7,6 +7,8 @@ interface SettingsModalProps {
 
 export function SettingsModal({ open, onClose }: SettingsModalProps): React.ReactElement | null {
   const [geminiApiKey, setGeminiApiKey] = useState('')
+  const [proxyUrl, setProxyUrl] = useState('')
+  const [geminiModel, setGeminiModel] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -17,6 +19,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): React.Reac
         .get()
         .then((config) => {
           setGeminiApiKey(config.geminiApiKey ?? '')
+          setProxyUrl(config.proxyUrl ?? '')
+          setGeminiModel(config.geminiModel ?? '')
         })
         .finally(() => setLoading(false))
     }
@@ -27,6 +31,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): React.Reac
     setSaving(true)
     try {
       await window.settingsAPI.save('geminiApiKey', geminiApiKey.trim() || null)
+      await window.settingsAPI.save('proxyUrl', proxyUrl.trim() || '')
+      await window.settingsAPI.save('geminiModel', geminiModel.trim() || 'gemini-2.5-flash')
       onClose()
     } finally {
       setSaving(false)
@@ -42,21 +48,45 @@ export function SettingsModal({ open, onClose }: SettingsModalProps): React.Reac
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold text-gray-800 mb-4">设置</h2>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Gemini API Key</label>
         {loading ? (
           <p className="text-gray-500 text-sm">加载中…</p>
         ) : (
-          <input
-            type="password"
-            value={geminiApiKey}
-            onChange={(e) => setGeminiApiKey(e.target.value)}
-            placeholder="请输入 Google Gemini API Key"
-            className="w-full px-3 py-2 border border-gray-300 rounded text-gray-800 placeholder-gray-400"
-          />
+          <>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Gemini API Key</label>
+              <input
+                type="password"
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+                placeholder="请输入 Google Gemini API Key"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-gray-800 placeholder-gray-400"
+              />
+              <p className="text-xs text-gray-500 mt-1">密钥仅保存在本机。</p>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">代理地址</label>
+              <input
+                type="text"
+                value={proxyUrl}
+                onChange={(e) => setProxyUrl(e.target.value)}
+                placeholder="http://127.0.0.1:7897"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-gray-800 placeholder-gray-400"
+              />
+              <p className="text-xs text-gray-500 mt-1">留空则不使用代理。修改后需重启应用生效。</p>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">模型名称</label>
+              <input
+                type="text"
+                value={geminiModel}
+                onChange={(e) => setGeminiModel(e.target.value)}
+                placeholder="gemini-2.5-flash"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-gray-800 placeholder-gray-400"
+              />
+              <p className="text-xs text-gray-500 mt-1">如 gemini-2.5-flash、gemini-1.5-pro 等。</p>
+            </div>
+          </>
         )}
-        <p className="text-xs text-gray-500 mt-2">
-          密钥仅保存在本机，用于调用 Google Gemini 接口。
-        </p>
         <div className="flex justify-end gap-2 mt-6">
           <button
             type="button"

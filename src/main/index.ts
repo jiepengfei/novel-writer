@@ -1,20 +1,5 @@
-// 最先设置代理，让主进程内请求（如 Gemini API）走本地代理
-import { setGlobalDispatcher, ProxyAgent } from 'undici';
-
-// 👇 你的 Clash 端口
-const PROXY_URL = 'http://127.0.0.1:7897';
-
-// 创建一个代理 Agent
-const dispatcher = new ProxyAgent(PROXY_URL);
-
-// ⚡️ 强制所有 fetch 请求（包括 Google SDK）都走这个代理
-setGlobalDispatcher(dispatcher);
-
-// 忽略 SSL 证书错误 (防止 fetch failed: certificate error)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-console.log(`✅ 网络层已强制接管，代理指向: ${PROXY_URL}`);
-
+// 代理在 app.whenReady 中根据设置应用（见下方）
+import { setGlobalDispatcher, ProxyAgent } from 'undici'
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -34,6 +19,10 @@ import { streamChat } from './aiService'
 interface ConfigSchema {
   lastOpenedProject: string | null
   geminiApiKey: string | null
+  /** 代理地址，如 http://127.0.0.1:7897，空则不使用代理 */
+  proxyUrl: string
+  /** Gemini 模型名，如 gemini-2.5-flash */
+  geminiModel: string
 }
 
 let store: { get: (k: keyof ConfigSchema) => unknown; set: (k: keyof ConfigSchema, v: unknown) => void }
@@ -75,8 +64,22 @@ app.whenReady().then(async () => {
   const StoreClass = (StoreModule.default ?? StoreModule) as new (opts: { name: string; defaults: ConfigSchema }) => StoreInstance
   store = new StoreClass({
     name: 'config',
-    defaults: { lastOpenedProject: null, geminiApiKey: null }
+    defaults: {
+      lastOpenedProject: null,
+      geminiApiKey: null,
+      proxyUrl: 'http://127.0.0.1:7897',
+      geminiModel: 'gemini-2.5-flash'
+    }
   })
+
+  // 根据设置应用代理（主进程 fetch 走 undici）
+  const proxyUrl = (store.get('proxyUrl') as string)?.trim()
+  if (proxyUrl) {
+    setGlobalDispatcher(new ProxyAgent(proxyUrl))
+    process.env.HTTPS_PROXY = proxyUrl
+    process.env.HTTP_PROXY = proxyUrl
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+  }
 
   electronApp.setAppUserModelId('com.electron')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
@@ -144,7 +147,9 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('settings:get', () => ({
-    geminiApiKey: store.get('geminiApiKey') as string | null
+    geminiApiKey: store.get('geminiApiKey') as string | null,
+    proxyUrl: (store.get('proxyUrl') as string) ?? '',
+    geminiModel: (store.get('geminiModel') as string) ?? 'gemini-2.5-flash'
   }))
   ipcMain.handle('settings:save', async (_, key: keyof ConfigSchema, value: unknown) => {
     store.set(key, value)
@@ -162,8 +167,9 @@ app.whenReady().then(async () => {
       event.sender.send('ai:error', '请输入消息内容')
       return
     }
+    const model = ((store.get('geminiModel') as string) || 'gemini-2.5-flash').trim()
     try {
-      await streamChat(message, apiKey, event.sender)
+      await streamChat(message, apiKey, model, event.sender)
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err)
       event.sender.send('ai:error', raw)
