@@ -13,7 +13,8 @@ import {
   readFileContent,
   saveFileContent,
   setFileActive as pmSetFileActive,
-  getStoryContext
+  getStoryContext,
+  reorderFiles as pmReorderFiles
 } from './projectManager'
 import type { ProjectManifest } from '../shared/types'
 import { streamChat, streamExpand } from './aiService'
@@ -154,6 +155,17 @@ app.whenReady().then(async () => {
       const p = getProjectPath()
       if (!p) return false
       return pmSetFileActive(p, id, isActive)
+    }
+  )
+  ipcMain.handle(
+    'file:reorder',
+    async (
+      _,
+      payload: { category: 'outlines' | 'content' | 'settings'; parentId: string | null; newOrderIds: string[] }
+    ) => {
+      const p = getProjectPath()
+      if (!p || !payload?.category || !Array.isArray(payload.newOrderIds)) return false
+      return pmReorderFiles(p, payload.category, payload.parentId ?? null, payload.newOrderIds)
     }
   )
 

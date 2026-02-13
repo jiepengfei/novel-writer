@@ -64,7 +64,7 @@ Unlike standard HTTP requests, we use **Streaming** to reduce perceived latency.
 **Goal:** The logic that talks to Google.
 1.  **Main Process:** Create `AIService.ts`.
     * Function `streamChat(prompt, apiKey, webContents)`.
-    * Use `getGenerativeModel({ model: "gemini-1.5-pro" })`.
+    * Use `getGenerativeModel({ model: "gemini-2.5-pro" })`.
 2.  **IPC Handler:**
     * Listen for `ai:chat-start`.
     * Validation: If no API Key in store, reply with error "Please configure API Key".

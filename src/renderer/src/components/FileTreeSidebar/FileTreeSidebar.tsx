@@ -1,4 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useAppStore, type FileCategory } from '../../store/useAppStore'
 import type { FileNode } from '../../../../shared/types'
 
@@ -46,6 +61,87 @@ function updateInTree(nodes: FileNode[], id: string, patch: Partial<FileNode>): 
     }
     return n
   })
+}
+
+/** 返回节点所在层的父节点 id，根层为 null，未找到为 undefined */
+function findParentId(nodes: FileNode[], id: string): string | null | undefined {
+  if (nodes.some((n) => n.id === id)) return null
+  for (const n of nodes) {
+    if (n.children?.length) {
+      if (n.children.some((c) => c.id === id)) return n.id
+      const deep = findParentId(n.children, id)
+      if (deep !== undefined) return deep
+    }
+  }
+  return undefined
+}
+
+function reorderInTree(
+  nodes: FileNode[],
+  parentId: string | null,
+  newOrderIds: string[]
+): FileNode[] {
+  if (parentId === null) {
+    const byId = new Map(nodes.map((n) => [n.id, n]))
+    const ordered = newOrderIds.map((id) => byId.get(id)).filter((n): n is FileNode => !!n)
+    const rest = nodes.filter((n) => !newOrderIds.includes(n.id))
+    return [...ordered, ...rest]
+  }
+  return nodes.map((n) => {
+    if (n.id === parentId) {
+      const children = n.children ?? []
+      const byId = new Map(children.map((c) => [c.id, c]))
+      const ordered = newOrderIds.map((id) => byId.get(id)).filter((c): c is FileNode => !!c)
+      const rest = children.filter((c) => !newOrderIds.includes(c.id))
+      return { ...n, children: [...ordered, ...rest] }
+    }
+    if (n.children?.length) {
+      return { ...n, children: reorderInTree(n.children, parentId, newOrderIds) }
+    }
+    return n
+  })
+}
+
+type TreeNodeProps = {
+  node: FileNode
+  category: FileCategory
+  depth: number
+  activeFile: { id: string; category: string } | null
+  editingId: string | null
+  expandedIds: Set<string>
+  onToggleExpand: (id: string) => void
+  onSelect: (id: string, category: FileCategory) => void
+  onAddChild: (category: FileCategory, parentId: string) => void
+  onDelete: (id: string, category: FileCategory) => void
+  onContextMenu: (e: React.MouseEvent, id: string) => void
+  onStartRename: (category: FileCategory, id: string) => void
+  onFinishRename: (category: FileCategory, id: string, newTitle: string) => void
+  contextMenu: { id: string; x: number; y: number } | null
+  onCloseContextMenu: () => void
+  onRenameClick: () => void
+  onDeleteClick: () => void
+  onAddChildClick: () => void
+  onToggleActive?: (id: string, isActive: boolean) => void
+}
+
+function SortableTreeNodeWrapper(props: TreeNodeProps): React.ReactElement {
+  const { node } = props
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: node.id
+  })
+  const style = transform ? { transform: CSS.Transform.toString(transform), transition } : undefined
+  return (
+    <TreeNode
+      {...props}
+      sortableProps={{
+        setNodeRef,
+        attributes: attributes as unknown as Record<string, unknown>,
+        listeners: (listeners ?? {}) as unknown as Record<string, unknown>,
+        style,
+        isDragging
+      }}
+    />
+  )
 }
 
 function Section({
@@ -126,30 +222,32 @@ function Section({
       </div>
       {!collapsed && (
         <ul className="pl-2 text-sm">
-          {roots.map((node) => (
-            <TreeNode
-              key={node.id}
-              node={node}
-              category={category}
-              depth={0}
-              activeFile={activeFile}
-              editingId={editingId}
-              expandedIds={expandedIds}
-              onToggleExpand={onToggleExpand}
-              onSelect={onSelect}
-              onAddChild={onAddChild}
-              onDelete={onDelete}
-              onContextMenu={handleContextMenu}
-              onStartRename={onStartRename}
-              onFinishRename={onFinishRename}
-              contextMenu={contextMenu}
-              onCloseContextMenu={() => setContextMenu(null)}
-              onRenameClick={handleRenameClick}
-              onDeleteClick={handleDelete}
-              onAddChildClick={handleAddChildClick}
-              onToggleActive={onToggleActive}
-            />
-          ))}
+          <SortableContext items={roots.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+            {roots.map((node) => (
+              <SortableTreeNodeWrapper
+                key={node.id}
+                node={node}
+                category={category}
+                depth={0}
+                activeFile={activeFile}
+                editingId={editingId}
+                expandedIds={expandedIds}
+                onToggleExpand={onToggleExpand}
+                onSelect={onSelect}
+                onAddChild={onAddChild}
+                onDelete={onDelete}
+                onContextMenu={handleContextMenu}
+                onStartRename={onStartRename}
+                onFinishRename={onFinishRename}
+                contextMenu={contextMenu}
+                onCloseContextMenu={() => setContextMenu(null)}
+                onRenameClick={handleRenameClick}
+                onDeleteClick={handleDelete}
+                onAddChildClick={handleAddChildClick}
+                onToggleActive={onToggleActive}
+              />
+            ))}
+          </SortableContext>
         </ul>
       )}
     </div>
@@ -175,7 +273,8 @@ function TreeNode({
   onRenameClick,
   onDeleteClick,
   onAddChildClick,
-  onToggleActive
+  onToggleActive,
+  sortableProps
 }: {
   node: FileNode
   category: FileCategory
@@ -196,14 +295,28 @@ function TreeNode({
   onDeleteClick: () => void
   onAddChildClick: () => void
   onToggleActive?: (id: string, isActive: boolean) => void
+  sortableProps?: {
+    setNodeRef: (el: HTMLElement | null) => void
+    attributes: Record<string, unknown>
+    listeners: Record<string, unknown>
+    style?: React.CSSProperties
+    isDragging?: boolean
+  }
 }): React.ReactElement {
   const hasChildren = !!node.children?.length
   const expanded = expandedIds.has(node.id)
   const showActiveToggle = category === 'settings' && typeof onToggleActive === 'function'
+  const sp = sortableProps
 
   return (
     <li className="relative">
-      <div className="flex items-center group" style={{ paddingLeft: depth * 12 }}>
+      <div
+        ref={sp?.setNodeRef}
+        {...(sp?.attributes ?? {})}
+        {...(sp?.listeners ?? {})}
+        style={{ paddingLeft: depth * 12, ...sp?.style }}
+        className={`flex items-center group ${sp?.isDragging ? 'opacity-50' : ''}`}
+      >
         {hasChildren ? (
           <button
             type="button"
@@ -303,30 +416,35 @@ function TreeNode({
       )}
       {hasChildren && expanded && (
         <ul className="pl-2">
-          {node.children!.map((child) => (
-            <TreeNode
-              key={child.id}
-              node={child}
-              category={category}
-              depth={depth + 1}
-              activeFile={activeFile}
-              editingId={editingId}
-              expandedIds={expandedIds}
-              onToggleExpand={onToggleExpand}
-              onSelect={onSelect}
-              onAddChild={onAddChild}
-              onDelete={onDelete}
-              onContextMenu={onContextMenu}
-              onStartRename={onStartRename}
-              onFinishRename={onFinishRename}
-              contextMenu={contextMenu}
-              onCloseContextMenu={onCloseContextMenu}
-              onRenameClick={onRenameClick}
-              onDeleteClick={onDeleteClick}
-              onAddChildClick={onAddChildClick}
-              onToggleActive={onToggleActive}
-            />
-          ))}
+          <SortableContext
+            items={node.children!.map((c) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {node.children!.map((child) => (
+              <SortableTreeNodeWrapper
+                key={child.id}
+                node={child}
+                category={category}
+                depth={depth + 1}
+                activeFile={activeFile}
+                editingId={editingId}
+                expandedIds={expandedIds}
+                onToggleExpand={onToggleExpand}
+                onSelect={onSelect}
+                onAddChild={onAddChild}
+                onDelete={onDelete}
+                onContextMenu={onContextMenu}
+                onStartRename={onStartRename}
+                onFinishRename={onFinishRename}
+                contextMenu={contextMenu}
+                onCloseContextMenu={onCloseContextMenu}
+                onRenameClick={onRenameClick}
+                onDeleteClick={onDeleteClick}
+                onAddChildClick={onAddChildClick}
+                onToggleActive={onToggleActive}
+              />
+            ))}
+          </SortableContext>
         </ul>
       )}
     </li>
@@ -458,29 +576,67 @@ export function FileTreeSidebar(): React.ReactElement | null {
     }
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 }
+    })
+  )
+
+  const handleDragEnd = (event: DragEndEvent): void => {
+    const { active, over } = event
+    if (!over || active.id === over.id || !fileTree || !window.fileAPI?.reorder) return
+    const draggedId = String(active.id)
+    const overId = String(over.id)
+    let category: FileCategory | null = null
+    let roots: FileNode[] = []
+    for (const key of ['outlines', 'content', 'settings'] as const) {
+      const r = fileTree.files[key] ?? []
+      if (findInTree(r, draggedId)) {
+        category = key
+        roots = r
+        break
+      }
+    }
+    if (!category) return
+    const parentId = findParentId(roots, draggedId)
+    if (parentId === undefined) return
+    const list = parentId === null ? roots : (findInTree(roots, parentId)?.children ?? [])
+    const ids = list.map((n) => n.id)
+    const oldIndex = ids.indexOf(draggedId)
+    const newIndex = ids.indexOf(overId)
+    if (oldIndex === -1 || newIndex === -1) return
+    const newOrderIds = arrayMove(ids, oldIndex, newIndex)
+    const next = { ...fileTree, files: { ...fileTree.files } }
+    next.files[category] = reorderInTree(roots, parentId, newOrderIds)
+    setFileTree(next)
+    window.fileAPI.reorder(category, parentId, newOrderIds)
+  }
+
   if (!fileTree) return null
 
   return (
-    <div className="flex flex-col h-full">
-      {CATEGORIES.map(({ key, label }) => (
-        <Section
-          key={key}
-          label={label}
-          category={key}
-          roots={fileTree.files[key] ?? []}
-          activeFile={activeFile}
-          editingId={editingNode?.category === key ? editingNode.id : null}
-          expandedIds={expandedIds}
-          onToggleExpand={toggleExpand}
-          onSelect={(id, cat) => setActiveFile({ id, category: cat })}
-          onAddRoot={handleAddRoot}
-          onAddChild={handleAddChild}
-          onDelete={handleDelete}
-          onStartRename={(cat, id) => setEditingNode({ category: cat, id })}
-          onFinishRename={handleFinishRename}
-          onToggleActive={key === 'settings' ? handleToggleActive : undefined}
-        />
-      ))}
-    </div>
+    <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd} sensors={sensors}>
+      <div className="flex flex-col h-full">
+        {CATEGORIES.map(({ key, label }) => (
+          <Section
+            key={key}
+            label={label}
+            category={key}
+            roots={fileTree.files[key] ?? []}
+            activeFile={activeFile}
+            editingId={editingNode?.category === key ? editingNode.id : null}
+            expandedIds={expandedIds}
+            onToggleExpand={toggleExpand}
+            onSelect={(id, cat) => setActiveFile({ id, category: cat })}
+            onAddRoot={handleAddRoot}
+            onAddChild={handleAddChild}
+            onDelete={handleDelete}
+            onStartRename={(cat, id) => setEditingNode({ category: cat, id })}
+            onFinishRename={handleFinishRename}
+            onToggleActive={key === 'settings' ? handleToggleActive : undefined}
+          />
+        ))}
+      </div>
+    </DndContext>
   )
 }

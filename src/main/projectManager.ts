@@ -207,6 +207,48 @@ export async function saveFileContent(
 }
 
 /**
+ * 重排某分类下根节点或某父节点下子节点的顺序，并写回 project.json。
+ * @param parentId - 为 null 时重排根节点；否则重排该父节点的 children。
+ * @param newOrderIds - 新的 ID 顺序（仅同层）。
+ */
+export async function reorderFiles(
+  projectPath: string,
+  category: 'outlines' | 'content' | 'settings',
+  parentId: string | null,
+  newOrderIds: string[]
+): Promise<boolean> {
+  const manifest = await loadProject(projectPath)
+  const roots = (manifest.files[category] ?? []) as FileNode[]
+
+  const reorder = (nodes: FileNode[], ids: string[]): FileNode[] => {
+    const byId = new Map(nodes.map((n) => [n.id, n]))
+    const ordered: FileNode[] = []
+    for (const id of ids) {
+      const node = byId.get(id)
+      if (node) ordered.push(node)
+    }
+    const appended = nodes.filter((n) => !ids.includes(n.id))
+    return ensureTreeShape([...ordered, ...appended])
+  }
+
+  if (parentId === null) {
+    manifest.files[category] = reorder(roots, newOrderIds)
+  } else {
+    const parent = findInTree(roots, parentId)
+    if (!parent) return false
+    const children = parent.children ?? []
+    parent.children = reorder(children, newOrderIds)
+  }
+
+  await writeFile(
+    join(projectPath, PROJECT_JSON),
+    JSON.stringify(manifest, null, 2),
+    'utf-8'
+  )
+  return true
+}
+
+/**
  * 仅对设定项有效：切换某文件的「参与 AI 上下文」状态，并写回 project.json。
  */
 export async function setFileActive(

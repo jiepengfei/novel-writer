@@ -68,7 +68,12 @@ const fileAPI = {
     category: 'outlines' | 'content' | 'settings',
     id: string,
     isActive: boolean
-  ) => ipcRenderer.invoke('file:set-active', category, id, isActive)
+  ) => ipcRenderer.invoke('file:set-active', category, id, isActive),
+  reorder: (
+    category: 'outlines' | 'content' | 'settings',
+    parentId: string | null,
+    newOrderIds: string[]
+  ) => ipcRenderer.invoke('file:reorder', { category, parentId, newOrderIds })
 }
 
 if (process.contextIsolated) {

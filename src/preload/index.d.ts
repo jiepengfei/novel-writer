@@ -45,6 +45,11 @@ declare global {
         id: string,
         isActive: boolean
       ) => Promise<boolean>
+      reorder: (
+        category: 'outlines' | 'content' | 'settings',
+        parentId: string | null,
+        newOrderIds: string[]
+      ) => Promise<boolean>
     }
   }
 }
