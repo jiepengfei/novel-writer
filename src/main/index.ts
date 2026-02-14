@@ -15,10 +15,11 @@ import {
   setFileActive as pmSetFileActive,
   getStoryContext,
   reorderFiles as pmReorderFiles,
-  exportProject as pmExportProject
+  exportProject as pmExportProject,
+  setFileSummary as pmSetFileSummary
 } from './projectManager'
 import type { ProjectManifest } from '../shared/types'
-import { streamChat, streamExpand } from './aiService'
+import { streamChat, streamExpand, generateSummary } from './aiService'
 
 interface ConfigSchema {
   lastOpenedProject: string | null
@@ -206,6 +207,33 @@ app.whenReady().then(async () => {
     store.set(key, value)
     return true
   })
+  ipcMain.handle(
+    'file:generate-summary',
+    async (
+      _,
+      payload: { category: 'outlines' | 'content' | 'settings'; id: string }
+    ): Promise<{ summary: string } | { error: string }> => {
+      if (payload?.category !== 'content' || !payload?.id) {
+        return { error: '仅支持对正文章节生成摘要' }
+      }
+      const p = getProjectPath()
+      if (!p) return { error: '未打开项目' }
+      const apiKey = store.get('geminiApiKey') as string | null
+      if (!apiKey?.trim()) return { error: '请先在设置中配置 API Key' }
+      const model = ((store.get('geminiModel') as string) || 'gemini-2.5-flash').trim()
+      try {
+        const content = await readFileContent(p, 'content', payload.id)
+        if (!content.trim()) return { error: '章节内容为空' }
+        const summary = await generateSummary(content, apiKey, model)
+        if (!summary) return { error: '生成摘要为空' }
+        await pmSetFileSummary(p, 'content', payload.id, summary)
+        return { summary }
+      } catch (err) {
+        const raw = err instanceof Error ? err.message : String(err)
+        return { error: raw }
+      }
+    }
+  )
 
   ipcMain.on('ai:chat-start', async (event, payload: { message: string }) => {
     const apiKey = store.get('geminiApiKey') as string | null

@@ -59,3 +59,24 @@ export async function streamExpand(
   }
   webContents.send('ai:expand-done')
 }
+
+const SUMMARY_PROMPT = (text: string) =>
+  `Summarize the following chapter in 2-4 short sentences. Output only the summary, no preamble or explanation.\n\n${text}`
+
+/**
+ * 生成章节摘要（非流式），用于上下文记忆。
+ */
+export async function generateSummary(
+  chapterText: string,
+  apiKey: string,
+  model: string
+): Promise<string> {
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const generativeModel = genAI.getGenerativeModel({
+    model: model || 'gemini-2.5-flash'
+  })
+  const result = await generativeModel.generateContent(SUMMARY_PROMPT(chapterText))
+  const response = result.response
+  const text = response.text()
+  return text?.trim() ?? ''
+}

@@ -299,6 +299,28 @@ export async function setFileActive(
   return true
 }
 
+/**
+ * 设置某文件节点的 summary（仅 content 章节用于上下文摘要）。
+ */
+export async function setFileSummary(
+  projectPath: string,
+  category: 'outlines' | 'content' | 'settings',
+  id: string,
+  summary: string
+): Promise<boolean> {
+  const manifest = await loadProject(projectPath)
+  const roots = (manifest.files[category] ?? []) as FileNode[]
+  const node = findInTree(roots, id)
+  if (!node) return false
+  node.summary = summary
+  await writeFile(
+    join(projectPath, PROJECT_JSON),
+    JSON.stringify(manifest, null, 2),
+    'utf-8'
+  )
+  return true
+}
+
 const STORY_BIBLE_HEADER = '--- STORY BIBLE ---'
 const STORY_BIBLE_FOOTER = '-------------------'
 

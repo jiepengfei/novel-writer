@@ -72,3 +72,7 @@ Implement a **Sliding Window** for chapter summaries. I should be able to config
 3.  When collecting previous chapter summaries, **slice the array** to only include the last N chapters before the current one.
 
 Please start by updating the Settings Modal."
+
+"Regarding the Summary Generation Trigger:
+Please implement it as a Manual Action via the Context Menu (Right-click on a chapter file).
+Do NOT trigger it automatically on every save, to avoid wasting tokens on incomplete drafts."

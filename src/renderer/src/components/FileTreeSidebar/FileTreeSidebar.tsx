@@ -122,6 +122,8 @@ type TreeNodeProps = {
   onDeleteClick: () => void
   onAddChildClick: () => void
   onToggleActive?: (id: string, isActive: boolean) => void
+  onGenerateSummary?: (id: string) => void
+  generatingSummaryId?: string | null
 }
 
 function SortableTreeNodeWrapper(props: TreeNodeProps): React.ReactElement {
@@ -158,7 +160,9 @@ function Section({
   onDelete,
   onStartRename,
   onFinishRename,
-  onToggleActive
+  onToggleActive,
+  onGenerateSummary,
+  generatingSummaryId
 }: {
   label: string
   category: FileCategory
@@ -174,9 +178,15 @@ function Section({
   onStartRename: (category: FileCategory, id: string) => void
   onFinishRename: (category: FileCategory, id: string, newTitle: string) => void
   onToggleActive?: (id: string, isActive: boolean) => void
+  onGenerateSummary?: (id: string) => Promise<void>
+  generatingSummaryId?: string | null
 }): React.ReactElement {
   const [collapsed, setCollapsed] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const wrappedOnGenerateSummary =
+    onGenerateSummary && category === 'content'
+      ? (id: string) => onGenerateSummary(id).then(() => setContextMenu(null))
+      : undefined
 
   const handleContextMenu = (e: React.MouseEvent, id: string): void => {
     e.preventDefault()
@@ -245,6 +255,8 @@ function Section({
                 onDeleteClick={handleDelete}
                 onAddChildClick={handleAddChildClick}
                 onToggleActive={onToggleActive}
+                onGenerateSummary={wrappedOnGenerateSummary}
+                generatingSummaryId={generatingSummaryId}
               />
             ))}
           </SortableContext>
@@ -274,6 +286,8 @@ function TreeNode({
   onDeleteClick,
   onAddChildClick,
   onToggleActive,
+  onGenerateSummary,
+  generatingSummaryId,
   sortableProps
 }: {
   node: FileNode
@@ -295,6 +309,8 @@ function TreeNode({
   onDeleteClick: () => void
   onAddChildClick: () => void
   onToggleActive?: (id: string, isActive: boolean) => void
+  onGenerateSummary?: (id: string) => void
+  generatingSummaryId?: string | null
   sortableProps?: {
     setNodeRef: (el: HTMLElement | null) => void
     attributes: Record<string, unknown>
@@ -390,6 +406,16 @@ function TreeNode({
             className="fixed z-20 py-1 bg-white border border-gray-200 rounded shadow min-w-[100px]"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
+            {category === 'content' && onGenerateSummary && (
+              <button
+                type="button"
+                onClick={() => onGenerateSummary(node.id)}
+                disabled={generatingSummaryId === node.id}
+                className="w-full text-left px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {generatingSummaryId === node.id ? '生成中…' : '生成摘要'}
+              </button>
+            )}
             <button
               type="button"
               onClick={onAddChildClick}
@@ -442,6 +468,8 @@ function TreeNode({
                 onDeleteClick={onDeleteClick}
                 onAddChildClick={onAddChildClick}
                 onToggleActive={onToggleActive}
+                onGenerateSummary={onGenerateSummary}
+                generatingSummaryId={generatingSummaryId}
               />
             ))}
           </SortableContext>
@@ -498,6 +526,7 @@ export function FileTreeSidebar(): React.ReactElement | null {
     id: string
   } | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [generatingSummaryId, setGeneratingSummaryId] = useState<string | null>(null)
 
   const toggleExpand = (id: string): void => {
     setExpandedIds((prev) => {
@@ -576,6 +605,23 @@ export function FileTreeSidebar(): React.ReactElement | null {
     }
   }
 
+  const handleGenerateSummary = async (id: string): Promise<void> => {
+    if (!window.fileAPI?.generateSummary || !fileTree) return
+    setGeneratingSummaryId(id)
+    try {
+      const res = await window.fileAPI.generateSummary('content', id)
+      if ('error' in res) {
+        window.alert(res.error)
+        return
+      }
+      const next = { ...fileTree, files: { ...fileTree.files } }
+      next.files.content = updateInTree(next.files.content ?? [], id, { summary: res.summary })
+      setFileTree(next)
+    } finally {
+      setGeneratingSummaryId(null)
+    }
+  }
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 }
@@ -632,9 +678,11 @@ export function FileTreeSidebar(): React.ReactElement | null {
             onAddChild={handleAddChild}
             onDelete={handleDelete}
             onStartRename={(cat, id) => setEditingNode({ category: cat, id })}
-            onFinishRename={handleFinishRename}
-            onToggleActive={key === 'settings' ? handleToggleActive : undefined}
-          />
+          onFinishRename={handleFinishRename}
+          onToggleActive={key === 'settings' ? handleToggleActive : undefined}
+          onGenerateSummary={key === 'content' ? handleGenerateSummary : undefined}
+          generatingSummaryId={generatingSummaryId}
+        />
         ))}
       </div>
     </DndContext>

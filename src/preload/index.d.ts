@@ -56,6 +56,10 @@ declare global {
         parentId: string | null,
         newOrderIds: string[]
       ) => Promise<boolean>
+      generateSummary: (
+        category: 'outlines' | 'content' | 'settings',
+        id: string
+      ) => Promise<{ summary: string } | { error: string }>
     }
   }
 }

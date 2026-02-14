@@ -78,7 +78,13 @@ const fileAPI = {
     category: 'outlines' | 'content' | 'settings',
     parentId: string | null,
     newOrderIds: string[]
-  ) => ipcRenderer.invoke('file:reorder', { category, parentId, newOrderIds })
+  ) => ipcRenderer.invoke('file:reorder', { category, parentId, newOrderIds }),
+  generateSummary: (
+    category: 'outlines' | 'content' | 'settings',
+    id: string
+  ) => ipcRenderer.invoke('file:generate-summary', { category, id }) as Promise<
+    { summary: string } | { error: string }
+  >
 }
 
 if (process.contextIsolated) {
