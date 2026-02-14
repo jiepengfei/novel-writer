@@ -1,34 +1,91 @@
 # novel-writer
 
-An Electron application with React and TypeScript
+基于 Electron + React + TypeScript 的本地小说写作工具，支持大纲 / 正文 / 设定管理、AI 扩展与对话、上下文注入与导出。
 
-## Recommended IDE Setup
+---
+
+## 安装与运行
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 开发模式
+
+```bash
+npm run dev
+```
+
+### 打包
+
+```bash
+# Windows
+npm run build:win
+
+# macOS
+npm run build:mac
+
+# Linux
+npm run build:linux
+```
+
+---
+
+## 功能与操作
+
+### 1. 打开项目
+
+- 启动后选择或打开一个**项目文件夹**（需包含或自动生成 `project.json` 及 `outlines` / `content` / `settings` 子目录）。
+- 项目结构会显示在左侧**文件**侧栏。
+
+### 2. 文件树（左侧栏）
+
+- **三个分类**：大纲、正文、设定。每类下可新建、重命名、删除节点；支持多级子节点（如分卷）。
+- **新建**：点击分类标题旁的 `+` 新建根节点；或点击某节点右侧的 `+` 在其下新建子节点。
+- **重命名**：双击节点名称进入编辑，回车保存。
+- **删除**：右键节点 →「删除」。
+- **拖拽排序**：在同一层级内拖动节点可调整顺序，顺序会写入 `project.json` 并持久保存。
+- **设定项「参与 AI 上下文」**：仅**设定**分类下的节点旁有复选框；勾选后，该设定文件内容会在每次 AI 请求（聊天、扩展）时注入系统指令（Story Bible）。未勾选则不注入，用于节省 token。
+
+### 3. 正文章节摘要（手动生成）
+
+- 在**正文**分类下，右键某一章节 →「生成摘要」。
+- 会读取该章节当前内容，调用 Gemini 生成 2–4 句摘要并写入该节点的 `summary`（保存在 `project.json`），**不会**在每次保存时自动生成，避免对未完成草稿浪费 token。
+- 摘要供后续「前文章节上下文滑动窗口」使用（需在设置中配置 Context Window Size）。
+
+### 4. 编辑器与 AI 扩展
+
+- 在文件树中点击**正文**下的某一章节，中间主区域会打开该章节进行编辑（Markdown 文本）。
+- **选中一段文字**后，会弹出浮动工具栏（BubbleMenu）：
+  - **✨ Expand**：用 AI 对选中内容进行扩写，流式输出；结束后会弹出**审阅面板**，显示「原文」与「生成」内容；生成内容可编辑，确认后点「接受」替换原文，或「取消」恢复原文。已接受的扩写会以绿色高亮标记。
+  - **💬 Chat**：将选中内容作为**上下文 tag** 添加到右侧聊天输入区上方（见下方「聊天」），不直接改正文。
+- 若光标在**已接受的 AI 扩写块**内，工具栏会显示 **✅ 接受** / **❌ 拒绝**，可对该整块进行接受或恢复为扩写前原文。
+- 聊天与扩展前，请先在**设置**中配置 Gemini API Key（及代理、模型）。
+
+### 5. 聊天（右侧栏）
+
+- **输入区**上方可显示多个**上下文 tag**（来自编辑器中「💬 Chat」选中的内容）。Tag 可删除（×），不可编辑；发送时会将所有 tag 以引用块形式与输入框内容一起发给 AI。
+- 输入框支持多行，**高度可调**：拖拽输入区上方的横条可改变整块输入区域高度；输入框本身也可通过右下角拖拽纵向缩放。
+- 发送后，AI 回复会流式显示；**聊天内容可选中复制**。
+- 每次请求都会自动注入：已勾选为「参与 AI 上下文」的设定文件内容（Story Bible），以及（若实现前文摘要逻辑）前 N 章摘要（N 由设置中的 Context Window Size 决定）。
+
+### 6. 导出
+
+- 在左侧栏「文件」标题同一行点击 **导出**，会弹出系统另存为对话框。
+- 选择路径后，会将当前项目**正文**分类下所有章节按 `project.json` 中的顺序合并为一个 `.txt` 文件（每章以 `### 章节标题` 和分隔线区分），便于发布或备份。
+
+### 7. 设置
+
+- 点击左侧栏底部的 **⚙️ 设置** 打开设置弹窗。
+- **Gemini API Key**：必填，用于聊天与扩展；仅保存在本机。
+- **代理地址**：如 `http://127.0.0.1:7897`，留空则不使用代理；修改后需重启应用生效。
+- **模型名称**：如 `gemini-2.5-flash`、`gemini-1.5-pro` 等。
+- **Context Window Size (Chapters)**：前文章节摘要数量上限（1–100，默认 20），用于限制注入到 AI 的「前文摘要」条数，节省 token。
+
+---
+
+## 推荐 IDE
 
 - [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
-
-## Project Setup
-
-### Install
-
-```bash
-$ npm install
-```
-
-### Development
-
-```bash
-$ npm run dev
-```
-
-### Build
-
-```bash
-# For windows
-$ npm run build:win
-
-# For macOS
-$ npm run build:mac
-
-# For Linux
-$ npm run build:linux
-```
