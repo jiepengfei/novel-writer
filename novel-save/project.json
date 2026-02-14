@@ -29,7 +29,7 @@
       {
         "id": "515b25ea-7f93-4343-a387-50a38f9e6950",
         "filename": "515b25ea-7f93-4343-a387-50a38f9e6950.md",
-        "title": "新章节"
+        "title": "第一章 无影人"
       },
       {
         "id": "0e8d061f-70ec-4184-a463-8fcbb4d56046",
@@ -44,15 +44,15 @@
     ],
     "settings": [
       {
-        "id": "c541cb89-b717-4edd-8f75-cbd0e95965cb",
-        "filename": "c541cb89-b717-4edd-8f75-cbd0e95965cb.md",
-        "title": "新设定",
-        "isActive": false
-      },
-      {
         "id": "4afc4406-1fce-47a1-8ab7-27701e9b4ca8",
         "filename": "4afc4406-1fce-47a1-8ab7-27701e9b4ca8.md",
-        "title": "新设定",
+        "title": "写作指南",
+        "isActive": true
+      },
+      {
+        "id": "c541cb89-b717-4edd-8f75-cbd0e95965cb",
+        "filename": "c541cb89-b717-4edd-8f75-cbd0e95965cb.md",
+        "title": "设定",
         "isActive": false
       },
       {

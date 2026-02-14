@@ -22,6 +22,7 @@ declare global {
         geminiApiKey: string | null
         proxyUrl: string
         geminiModel: string
+        maxHistoryChapters: number
       }>
       save: (key: string, value: unknown) => Promise<boolean>
     }

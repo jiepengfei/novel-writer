@@ -302,10 +302,20 @@ export async function setFileActive(
 const STORY_BIBLE_HEADER = '--- STORY BIBLE ---'
 const STORY_BIBLE_FOOTER = '-------------------'
 
+export interface GetStoryContextOptions {
+  /** 注入的「前文章节摘要」数量上限（滑动窗口），仅当存在章节摘要时生效 */
+  maxHistoryChapters?: number
+}
+
 /**
  * 读取项目 settings 中仅 isActive === true 的 .md 文件，拼接为 Story Bible 字符串，用于注入 AI 系统指令。
+ * options.maxHistoryChapters 供 Phase 8 章节摘要滑动窗口使用，当前仅 Active Settings 时未使用。
  */
-export async function getStoryContext(projectPath: string): Promise<string> {
+export async function getStoryContext(
+  projectPath: string,
+  options?: GetStoryContextOptions // Phase 8: use options.maxHistoryChapters to slice chapter summaries
+): Promise<string> {
+  void options
   const manifest = await loadProject(projectPath)
   const allSettings = flattenFileNodes(manifest.files.settings ?? [])
   const active = allSettings.filter((n) => n.filename?.endsWith('.md') && n.isActive === true)

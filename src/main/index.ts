@@ -27,6 +27,8 @@ interface ConfigSchema {
   proxyUrl: string
   /** Gemini 模型名，如 gemini-2.5-flash */
   geminiModel: string
+  /** 注入 AI 的「前文章节摘要」数量上限（滑动窗口），默认 20 */
+  maxHistoryChapters: number
 }
 
 let store: { get: (k: keyof ConfigSchema) => unknown; set: (k: keyof ConfigSchema, v: unknown) => void }
@@ -72,7 +74,8 @@ app.whenReady().then(async () => {
       lastOpenedProject: null,
       geminiApiKey: null,
       proxyUrl: 'http://127.0.0.1:7897',
-      geminiModel: 'gemini-2.5-flash'
+      geminiModel: 'gemini-2.5-flash',
+      maxHistoryChapters: 20
     }
   })
 
@@ -196,7 +199,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('settings:get', () => ({
     geminiApiKey: store.get('geminiApiKey') as string | null,
     proxyUrl: (store.get('proxyUrl') as string) ?? '',
-    geminiModel: (store.get('geminiModel') as string) ?? 'gemini-2.5-flash'
+    geminiModel: (store.get('geminiModel') as string) ?? 'gemini-2.5-flash',
+    maxHistoryChapters: (store.get('maxHistoryChapters') as number) ?? 20
   }))
   ipcMain.handle('settings:save', async (_, key: keyof ConfigSchema, value: unknown) => {
     store.set(key, value)
@@ -216,7 +220,10 @@ app.whenReady().then(async () => {
     }
     const model = ((store.get('geminiModel') as string) || 'gemini-2.5-flash').trim()
     const projectPath = getProjectPath()
-    const systemContext = projectPath ? await getStoryContext(projectPath) : ''
+    const maxHistoryChapters = (store.get('maxHistoryChapters') as number) ?? 20
+    const systemContext = projectPath
+      ? await getStoryContext(projectPath, { maxHistoryChapters })
+      : ''
     try {
       await streamChat(message, apiKey, model, event.sender, systemContext || undefined)
     } catch (err) {
@@ -238,7 +245,10 @@ app.whenReady().then(async () => {
     }
     const model = ((store.get('geminiModel') as string) || 'gemini-2.0-flash').trim()
     const projectPath = getProjectPath()
-    const systemContext = projectPath ? await getStoryContext(projectPath) : ''
+    const maxHistoryChapters = (store.get('maxHistoryChapters') as number) ?? 20
+    const systemContext = projectPath
+      ? await getStoryContext(projectPath, { maxHistoryChapters })
+      : ''
     try {
       await streamExpand(text, apiKey, model, event.sender, systemContext || undefined)
     } catch (err) {
