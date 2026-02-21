@@ -13,6 +13,8 @@ asarUnpack:
   - resources/**
 win:
   executableName: novel-writer
+  # 本地打包不签名，避免 Windows 上解压签名工具缓存时因无符号链接权限报错
+  signAndEditExecutable: false
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
